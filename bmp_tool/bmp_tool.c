@@ -17,11 +17,14 @@ So objectives:
 #include <stdbool.h>
 
 void drawRect(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1, bool filled);
+void drawCircle(const struct bmp* bmp_file, const struct color* line_color, long int xc, long int yc, long int radius, bool filled);
+void symmetryFilled(const struct bmp* bmp_file, const struct color* line_color, long int x, long int y, long int xc, long int yc);
 void drawLineHigh(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1);
+void symmetry(const struct bmp* bmp_file, const struct color* line_color, long int x, long int y, long int xc, long int yc);
 void drawLineLow(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1);
 void drawLine(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1);
 void drawPixel(const struct bmp* bmp_file, const struct color* pixel_color, long int x, long int y);
-void fillImage(const struct bmp* bmp_file, struct color* color);
+void fillImage(const struct bmp* bmp_file, const struct color* color);
 size_t alignUp(size_t size, size_t alignment);
 size_t bmpPitch(const struct bmp* bmp_file);
 
@@ -130,18 +133,23 @@ int main()
 	}; // black for the line
 
 	struct color background_color = {
-		0xFF,
-		0x00,
-		0xFF
-	}; // this is pure pink
+		0xCD,
+		0xCD,
+		0xCD
+	}; // this is grey
 
 	fillImage(&bmp_file, &background_color); // make the entire background pink
+	drawLine(&bmp_file, &line_color, 0, 200, 300, 450); // weird line to satisfy JFR
+	drawLine(&bmp_file, &line_color, 300, 200, 0, 450); // weird line other direction to satisfy JFR
+	drawLine(&bmp_file, &line_color, 30, 20, 300, 100); // JFRs Line
 	drawLine(&bmp_file, &line_color, 100, 0, 100, 1000); // vertica line
 	drawLine(&bmp_file, &line_color, 0, 100, 1000, 100); // horizontal line
 	drawLine(&bmp_file, &line_color, 0, 0, width, height); // diagonal top left to bottom right
 	drawLine(&bmp_file, &line_color, width, 0, 0, height); // diagonal top right to bottom left
 	drawRect(&bmp_file, &line_color, 100, 100, 400, 400, false); // rectangle top left no fill
 	drawRect(&bmp_file, &line_color, 400, 400, 700, 700, true); // rectangle directly bottom right of the previous one with fill
+	drawCircle(&bmp_file, &line_color, 800, 800, 100, false); // empty circle at 800,800 with radius 100
+	drawCircle(&bmp_file, &line_color, 500, 800, 100, true); // filled circle at 500,800 with radius 100
 
 	//printf("ImageData %d\n", imageData);
 
@@ -192,6 +200,46 @@ void drawRect(const struct bmp* bmp_file, struct color* line_color, long int x0,
 	}
 }
 
+void drawCircle(const struct bmp* bmp_file, const struct color* line_color, long int x_center, long int y_center, long int radius, bool filled) {
+	int x = 0;
+	int y = radius;
+	int p = 1 - radius;
+
+	if (filled == true) {
+		symmetryFilled(bmp_file, line_color, x, y, x_center, y_center);
+	}
+	else {
+		symmetry(bmp_file, line_color, x, y, x_center, y_center);
+	}
+
+	for (x = 0; y > x; x++) {
+		if (p < 0)
+			p += 2 * x + 3;
+		else {
+			p += 2 * (x - y) + 5;
+			y--;
+		}
+
+		if (filled == true) {
+			symmetryFilled(bmp_file, line_color, x, y, x_center, y_center);
+		}
+		else {
+			symmetry(bmp_file, line_color, x, y, x_center, y_center);
+		}
+	}
+}
+
+void symmetryFilled(const struct bmp* bmp_file, const struct color* line_color, long int x, long int y, long int xc, long int yc) {
+	// instead of coloring in the individual pixels of each pair draw a line between them
+	drawLine(bmp_file, line_color, xc - x, yc - y, xc + x, yc - y);
+
+	drawLine(bmp_file, line_color, xc - y, yc - x, xc + y, yc - x);
+
+	drawLine(bmp_file, line_color, xc - y, yc + x, xc + y, yc + x);
+
+	drawLine(bmp_file, line_color, xc - x, yc + y, xc + x, yc + y);
+}
+
 void drawLineHigh(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1) {
 	//calculate pitch of each line
 	size_t line_length = bmpPitch(bmp_file);
@@ -220,6 +268,21 @@ void drawLineHigh(const struct bmp* bmp_file, struct color* line_color, long int
 
 		D = D + 2 * deltax;
 	}
+}
+
+void symmetry(const struct bmp* bmp_file, const struct color* line_color, long int x, long int y, long int xc, long int yc) {
+	// color in all symetrical pixel pairs
+	drawPixel(bmp_file, line_color, xc + x, yc - y);
+	drawPixel(bmp_file, line_color, xc - x, yc - y);
+
+	drawPixel(bmp_file, line_color, xc + y, yc - x);
+	drawPixel(bmp_file, line_color, xc - y, yc - x);
+
+	drawPixel(bmp_file, line_color, xc + y, yc + x);
+	drawPixel(bmp_file, line_color, xc - y, yc + x);
+
+	drawPixel(bmp_file, line_color, xc + x, yc + y);
+	drawPixel(bmp_file, line_color, xc - x, yc + y);
 }
 
 void drawLineLow(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1) {
@@ -281,7 +344,7 @@ void drawPixel(const struct bmp* bmp_file, const struct color* pixel_color, long
 	pixel[2] = pixel_color->blue; //blue
 }
 
-void fillImage(const struct bmp* bmp_file, struct color* color) {
+void fillImage(const struct bmp* bmp_file, const struct color* color) {
 	//calculate pitch of each line
 	size_t line_length = bmpPitch(bmp_file);
 
