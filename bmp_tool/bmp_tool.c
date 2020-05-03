@@ -16,28 +16,13 @@ So objectives:
 #include <string.h>
 #include <stdbool.h>
 
-void drawRect(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1, bool filled);
-void drawCircle(const struct bmp* bmp_file, const struct color* line_color, long int xc, long int yc, long int radius, bool filled);
-void drawLineHigh(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1);
-void drawLineLow(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1);
-void drawLine(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1);
-void drawPixel(const struct bmp* bmp_file, const struct color* pixel_color, long int x, long int y);
-
-void fillImage(const struct bmp* bmp_file, const struct color* color);
-
-void symmetryFilled(const struct bmp* bmp_file, const struct color* line_color, long int x, long int y, long int xc, long int yc);
-void symmetry(const struct bmp* bmp_file, const struct color* line_color, long int x, long int y, long int xc, long int yc);
-
-size_t alignUp(size_t size, size_t alignment);
-size_t bmpPitch(const struct bmp* bmp_file);
-
 #pragma pack(push, 1)
 struct bmp_header {
 	uint16_t type;
 	uint32_t file_size;
 	uint32_t reserved;
 	uint32_t pixel_offset;
-} bmp_header;
+};
 #pragma pack(pop)
 
 // Happy now JFR?
@@ -54,20 +39,35 @@ struct bmp_dib {
 	int32_t y_ppm;
 	uint32_t color_used;
 	uint32_t color_important;
-} bmp_dib;
+};
 #pragma pack(pop)
 
 struct bmp {
 	struct bmp_header header;
 	struct bmp_dib dib_header;
 	uint8_t* imageData;
-} bmp;
+};
 
 struct color {
 	uint8_t red;
 	uint8_t green;
 	uint8_t blue;
-} color;
+};
+
+void drawRect(const struct bmp* bmp_file, const struct color* line_color, long int x0, long int y0, long int x1, long int y1, bool filled);
+void drawCircle(const struct bmp* bmp_file, const struct color* line_color, long int xc, long int yc, long int radius, bool filled);
+void drawLineHigh(const struct bmp* bmp_file, const struct color* line_color, long int x0, long int y0, long int x1, long int y1);
+void drawLineLow(const struct bmp* bmp_file, const struct color* line_color, long int x0, long int y0, long int x1, long int y1);
+void drawLine(const struct bmp* bmp_file, const struct color* line_color, long int x0, long int y0, long int x1, long int y1);
+void drawPixel(const struct bmp* bmp_file, const struct color* pixel_color, long int x, long int y);
+
+void fillImage(const struct bmp* bmp_file, const struct color* color);
+
+void symmetryFilled(const struct bmp* bmp_file, const struct color* line_color, long int x, long int y, long int xc, long int yc);
+void symmetry(const struct bmp* bmp_file, const struct color* line_color, long int x, long int y, long int xc, long int yc);
+
+size_t alignUp(size_t size, size_t alignment);
+size_t bmpPitch(const struct bmp* bmp_file);
 
 int main()
 {
@@ -181,7 +181,7 @@ int main()
 	return 0;
 }
 
-void drawRect(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1, bool filled) {
+void drawRect(const struct bmp* bmp_file, const struct color* line_color, long int x0, long int y0, long int x1, long int y1, bool filled) {
 	//calculate pitch of each line
 	size_t line_length = bmpPitch(bmp_file);
 
@@ -232,7 +232,7 @@ void drawCircle(const struct bmp* bmp_file, const struct color* line_color, long
 	}
 }
 
-void drawLineHigh(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1) {
+void drawLineHigh(const struct bmp* bmp_file, const struct color* line_color, long int x0, long int y0, long int x1, long int y1) {
 	//calculate pitch of each line
 	size_t line_length = bmpPitch(bmp_file);
 
@@ -262,7 +262,7 @@ void drawLineHigh(const struct bmp* bmp_file, struct color* line_color, long int
 	}
 }
 
-void drawLineLow(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1) {
+void drawLineLow(const struct bmp* bmp_file, const struct color* line_color, long int x0, long int y0, long int x1, long int y1) {
 	//calculate pitch of each line
 	size_t line_length = bmpPitch(bmp_file);
 
@@ -325,7 +325,7 @@ void drawLineLow(const struct bmp* bmp_file, struct color* line_color, long int 
 //	}
 //}
 
-void drawLine(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1) {
+void drawLine(const struct bmp* bmp_file, const struct color* line_color, long int x0, long int y0, long int x1, long int y1) {
 	if (abs(y1 - y0) < abs(x1 - x0)) {
 		if (x0 > x1) {
 			drawLineLow(bmp_file, line_color, x1, y1, x0, y0);
