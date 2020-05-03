@@ -1,6 +1,8 @@
 ﻿/*
 This is an exercise proposed by Teufelchen#2781 to help me (BigBrainAFK#0001) become the next CLang god
 
+99% of this code exists only cause JFR told me to do it this way.
+
 So objectives:
 - Understand the file format
 - Write software that creates empty bmps
@@ -12,13 +14,13 @@ So objectives:
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <tgmath.h>
 #include <stdbool.h>
 
-void drawRect(struct bmp bmp_file, struct color line_color, int32_t x0, int32_t y0, int32_t x1, int32_t y1, bool filled);
-void drawLine(struct bmp bmp_file, struct color line_color, int32_t x0, int32_t y0, int32_t x1, int32_t y1);
-void fillImage(struct bmp bmp_file, struct color color);
+void drawRect(const struct bmp* bmp_file, struct color line_color, size_t x0, size_t y0, size_t x1, size_t y1, bool filled);
+void drawLine(const struct bmp* bmp_file, struct color line_color, size_t x0, size_t y0, size_t x1, size_t y1);
+void fillImage(const struct bmp* bmp_file, struct color color);
 size_t align_up(size_t size, size_t alignment);
+size_t bmp_pitch(const struct bmp* bmp_file);
 
 #pragma pack(push, 1)
 struct bmp_header {
@@ -116,7 +118,7 @@ int main()
 
 	//memset so the microsoft compiler doesnt put 0xCD everywhere but its actually 0x00
 	//memset(bmp_file.imageData, 0xFF, dib_header.size_image);
-	fillImage(bmp_file, white);
+	fillImage(&bmp_file, white);
 
 	struct color line_color = {
 		0x00,
@@ -130,10 +132,10 @@ int main()
 		0xFF
 	}; // this is pure pink
 
-	fillImage(bmp_file, background_color);
-	drawLine(bmp_file, line_color, 0, 0, width, height);
-	drawRect(bmp_file, line_color, 100, 100, 400, 400, false);
-	drawRect(bmp_file, line_color, 400, 400, 700, 700, true);
+	fillImage(&bmp_file, background_color);
+	drawLine(&bmp_file, line_color, 0, 0, width, height);
+	drawRect(&bmp_file, line_color, 100, 100, 400, 400, false);
+	drawRect(&bmp_file, line_color, 400, 400, 700, 700, true);
 
 	//printf("ImageData %d\n", imageData);
 
@@ -162,17 +164,16 @@ int main()
 	return 0;
 }
 
-void drawRect(struct bmp bmp_file, struct color line_color, int32_t x0, int32_t y0, int32_t x1, int32_t y1, bool filled) {
-	//calculate line length in bytes
-	size_t line_length = bmp_file.dib_header.width * 3 * sizeof(uint8_t);
-	line_length = align_up(line_length, 4);
+void drawRect(const struct bmp* bmp_file, struct color line_color, size_t x0, size_t y0, size_t x1, size_t y1, bool filled) {
+	//calculate pitch of each line
+	size_t line_length = bmp_pitch(bmp_file);
 
 	// loop through all lines and the entire width in pixels and set each pixel to the color given
 	size_t line, row;
 	for (line = y0; line <= y1; line++) { //renegate height since we store a negative value for top-to-bottom pixel rows
 		for (row = x0; row <= x1; row++) {
 			if (line > y0 && line < y1 && row > x0 && row < x1 && filled == false) continue;
-			uint8_t* pixel = &bmp_file.imageData[line * line_length + row * 3 * sizeof(uint8_t)];
+			uint8_t* pixel = &bmp_file->imageData[line * line_length + row * 3 * sizeof(uint8_t)];
 			pixel[0] = color.red; //red
 			pixel[1] = color.green; //green
 			pixel[2] = color.blue; //blue
@@ -180,21 +181,20 @@ void drawRect(struct bmp bmp_file, struct color line_color, int32_t x0, int32_t 
 	}
 }
 
-void drawLine(struct bmp bmp_file, struct color line_color, int32_t x0, int32_t y0, int32_t x1, int32_t y1) {
-	//calculate line length in bytes
-	size_t line_length = bmp_file.dib_header.width * 3 * sizeof(uint8_t);
-	line_length = align_up(line_length, 4);
+void drawLine(const struct bmp* bmp_file, struct color line_color, size_t x0, size_t y0, size_t x1, size_t y1) {
+	//calculate pitch of each line
+	size_t line_length = bmp_pitch(bmp_file);
 
 	// calculate delta of x and y to know the direction of the line
-	int32_t deltax= x1 - x0;
-	int32_t deltay = y1 - y0;
-	int32_t D = 2 * deltay - deltax;
+	size_t deltax= x1 - x0;
+	size_t deltay = y1 - y0;
+	size_t D = 2 * deltay - deltax;
 	
 	// loop through the entire lines "width" from x0 to x1
-	int32_t y = y0;
-	int32_t x;
+	size_t y = y0;
+	size_t x;
 	for (x = x0; x <= x1; x++) {
-		uint8_t* pixel = &bmp_file.imageData[y * line_length + x * 3 * sizeof(uint8_t)];
+		uint8_t* pixel = &bmp_file->imageData[y * line_length + x * 3 * sizeof(uint8_t)];
 		pixel[0] = line_color.red; //red
 		pixel[1] = line_color.green; //green
 		pixel[2] = line_color.blue; //blue
@@ -208,16 +208,15 @@ void drawLine(struct bmp bmp_file, struct color line_color, int32_t x0, int32_t 
 	}
 }
 
-void fillImage(struct bmp bmp_file, struct color color) {
-	//calculate line length in bytes
-	size_t line_length = bmp_file.dib_header.width * 3 * sizeof(uint8_t);
-	line_length = align_up(line_length, 4);
+void fillImage(const struct bmp* bmp_file, struct color color) {
+	//calculate pitch of each line
+	size_t line_length = bmp_pitch(bmp_file);
 
 	// loop through all lines and the entire width in pixels and set each pixel to the color given
 	size_t line, row;
-	for (line = 0; line < -bmp_file.dib_header.height; line++) { //renegate height since we store a negative value for top-to-bottom pixel rows
-		for (row = 0; row < bmp_file.dib_header.width; row++) {
-			uint8_t* pixel = &bmp_file.imageData[line * line_length + row * 3 * sizeof(uint8_t)];
+	for (line = 0; line < -bmp_file->dib_header.height; line++) { //renegate height since we store a negative value for top-to-bottom pixel rows
+		for (row = 0; row < bmp_file->dib_header.width; row++) {
+			uint8_t* pixel = &bmp_file->imageData[line * line_length + row * 3 * sizeof(uint8_t)];
 			pixel[0] = color.red; //red
 			pixel[1] = color.green; //green
 			pixel[2] = color.blue; //blue
@@ -231,4 +230,9 @@ size_t align_up(size_t size, size_t alignment) {
 	size_t padding = remainder > 0 ? alignment - remainder : 0;
 	// return inverse which is the missing bits
 	return size + padding;
+}
+
+size_t bmp_pitch(const struct bmp* bmp_file) {
+	size_t pitch = bmp_file->dib_header.width * 3 * sizeof(uint8_t);
+	return align_up(pitch, 4);
 }
