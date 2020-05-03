@@ -16,11 +16,11 @@ So objectives:
 #include <string.h>
 #include <stdbool.h>
 
-void drawRect(const struct bmp* bmp_file, struct color* line_color, int32_t x0, int32_t y0, int32_t x1, int32_t y1, bool filled);
-void drawLineHigh(const struct bmp* bmp_file, struct color* line_color, int32_t x0, int32_t y0, int32_t x1, int32_t y1);
-void drawLineLow(const struct bmp* bmp_file, struct color* line_color, int32_t x0, int32_t y0, int32_t x1, int32_t y1);
-void drawLine(const struct bmp* bmp_file, struct color* line_color, int32_t x0, int32_t y0, int32_t x1, int32_t y1);
-void drawPixel(const struct bmp* bmp_file, const struct color* pixel_color, int32_t x, int32_t y);
+void drawRect(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1, bool filled);
+void drawLineHigh(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1);
+void drawLineLow(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1);
+void drawLine(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1);
+void drawPixel(const struct bmp* bmp_file, const struct color* pixel_color, long int x, long int y);
 void fillImage(const struct bmp* bmp_file, struct color* color);
 size_t alignUp(size_t size, size_t alignment);
 size_t bmpPitch(const struct bmp* bmp_file);
@@ -170,7 +170,7 @@ int main()
 	return 0;
 }
 
-void drawRect(const struct bmp* bmp_file, struct color* line_color, int32_t x0, int32_t y0, int32_t x1, int32_t y1, bool filled) {
+void drawRect(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1, bool filled) {
 	//calculate pitch of each line
 	size_t line_length = bmpPitch(bmp_file);
 
@@ -183,7 +183,7 @@ void drawRect(const struct bmp* bmp_file, struct color* line_color, int32_t x0, 
 	}
 
 	// loop through all lines and the entire width in pixels and set each pixel to the color given
-	int32_t line, row;
+	long int line, row;
 	for (line = y0; line <= y1; line++) { //renegate height since we store a negative value for top-to-bottom pixel rows
 		for (row = x0; row <= x1; row++) {
 			if (line > y0 && line < y1 && row > x0 && row < x1 && filled == false) continue;
@@ -192,15 +192,15 @@ void drawRect(const struct bmp* bmp_file, struct color* line_color, int32_t x0, 
 	}
 }
 
-void drawLineHigh(const struct bmp* bmp_file, struct color* line_color, int32_t x0, int32_t y0, int32_t x1, int32_t y1) {
+void drawLineHigh(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1) {
 	//calculate pitch of each line
 	size_t line_length = bmpPitch(bmp_file);
 
 	// calculate delta of x and y to know the direction of the line
-	int32_t deltax = x1 - x0;
-	int32_t deltay = y1 - y0;
-	int32_t D = 2 * deltax - deltay;
-	int32_t xi = 1;
+	long int deltax = x1 - x0;
+	long int deltay = y1 - y0;
+	long int D = 2 * deltax - deltay;
+	long int xi = 1;
 
 	if (deltax < 0) {
 		xi = -1;
@@ -208,8 +208,8 @@ void drawLineHigh(const struct bmp* bmp_file, struct color* line_color, int32_t 
 	}
 	
 	// loop through the entire images "height" from y0 to y1
-	int32_t x = x0;;
-	int32_t y;
+	long int x = x0;;
+	long int y;
 	for (y = y0; y < y1; y++) {
 		drawPixel(bmp_file, line_color, x, y);
 
@@ -222,15 +222,15 @@ void drawLineHigh(const struct bmp* bmp_file, struct color* line_color, int32_t 
 	}
 }
 
-void drawLineLow(const struct bmp* bmp_file, struct color* line_color, int32_t x0, int32_t y0, int32_t x1, int32_t y1) {
+void drawLineLow(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1) {
 	//calculate pitch of each line
 	size_t line_length = bmpPitch(bmp_file);
 
 	// calculate delta of x and y to know the direction of the line
-	int32_t deltax = x1 - x0;
-	int32_t deltay = y1 - y0;
-	int32_t D = 2 * deltay - deltax;
-	int32_t yi = 1;
+	long int deltax = x1 - x0;
+	long int deltay = y1 - y0;
+	long int D = 2 * deltay - deltax;
+	long int yi = 1;
 
 	if (deltay < 0) {
 		yi = -1;
@@ -238,8 +238,8 @@ void drawLineLow(const struct bmp* bmp_file, struct color* line_color, int32_t x
 	}
 
 	// loop through the entire lines "width" from x0 to x1
-	int32_t y = y0;
-	int32_t x;
+	long int y = y0;
+	long int x;
 	for (x = x0; x < x1; x++) {
 		drawPixel(bmp_file, line_color, x, y);
 
@@ -252,7 +252,7 @@ void drawLineLow(const struct bmp* bmp_file, struct color* line_color, int32_t x
 	}
 }
 
-void drawLine(const struct bmp* bmp_file, struct color* line_color, int32_t x0, int32_t y0, int32_t x1, int32_t y1) {
+void drawLine(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1) {
 	if (abs(y1 - y0) < abs(x1 - x0)) {
 		if (x0 > x1) {
 			drawLineLow(bmp_file, line_color, x1, y1, x0, y0);
@@ -271,7 +271,7 @@ void drawLine(const struct bmp* bmp_file, struct color* line_color, int32_t x0, 
 	}
 }
 
-void drawPixel(const struct bmp* bmp_file, const struct color* pixel_color, int32_t x, int32_t y) {
+void drawPixel(const struct bmp* bmp_file, const struct color* pixel_color, long int x, long int y) {
 	//calculate pitch of each line
 	size_t line_length = bmpPitch(bmp_file);
 
@@ -286,7 +286,7 @@ void fillImage(const struct bmp* bmp_file, struct color* color) {
 	size_t line_length = bmpPitch(bmp_file);
 
 	// loop through all lines and the entire width in pixels and set each pixel to the color given
-	size_t line, row;
+	long int line, row;
 	for (line = 0; line < -bmp_file->dib_header.height; line++) { //renegate height since we store a negative value for top-to-bottom pixel rows
 		for (row = 0; row < bmp_file->dib_header.width; row++) {
 			drawPixel(bmp_file, color, row, line);
