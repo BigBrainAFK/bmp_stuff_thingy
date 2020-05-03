@@ -16,11 +16,14 @@ So objectives:
 #include <string.h>
 #include <stdbool.h>
 
-void drawRect(const struct bmp* bmp_file, struct color line_color, size_t x0, size_t y0, size_t x1, size_t y1, bool filled);
-void drawLine(const struct bmp* bmp_file, struct color line_color, size_t x0, size_t y0, size_t x1, size_t y1);
-void fillImage(const struct bmp* bmp_file, struct color color);
-size_t align_up(size_t size, size_t alignment);
-size_t bmp_pitch(const struct bmp* bmp_file);
+void drawRect(const struct bmp* bmp_file, struct color* line_color, int32_t x0, int32_t y0, int32_t x1, int32_t y1, bool filled);
+void drawLineHigh(const struct bmp* bmp_file, struct color* line_color, int32_t x0, int32_t y0, int32_t x1, int32_t y1);
+void drawLineLow(const struct bmp* bmp_file, struct color* line_color, int32_t x0, int32_t y0, int32_t x1, int32_t y1);
+void drawLine(const struct bmp* bmp_file, struct color* line_color, int32_t x0, int32_t y0, int32_t x1, int32_t y1);
+void drawPixel(const struct bmp* bmp_file, const struct color* pixel_color, int32_t x, int32_t y);
+void fillImage(const struct bmp* bmp_file, struct color* color);
+size_t alignUp(size_t size, size_t alignment);
+size_t bmpPitch(const struct bmp* bmp_file);
 
 #pragma pack(push, 1)
 struct bmp_header {
@@ -52,7 +55,7 @@ struct bmp {
 	struct bmp_header header;
 	struct bmp_dib dib_header;
 	uint8_t* imageData;
-};
+} bmp;
 
 struct color {
 	uint8_t red;
@@ -84,8 +87,8 @@ int main()
 	};
 
 	// set size to JFR can go f**k himself
-	const size_t width = 1231;
-	const size_t height = 1234;
+	const int32_t width = 1231;
+	const int32_t height = 1234;
 	
 	// adjust bitmap DIB header accordingly
 	dib_header.width = width;
@@ -93,7 +96,7 @@ int main()
 
 	//calculate line length in bytes
 	size_t line_length = width * 3 * sizeof(uint8_t);
-	line_length = align_up(line_length, 4);
+	line_length = alignUp(line_length, 4);
 
 	//printf("line_length: %zd\n", line_length);
 
@@ -118,7 +121,7 @@ int main()
 
 	//memset so the microsoft compiler doesnt put 0xCD everywhere but its actually 0x00
 	//memset(bmp_file.imageData, 0xFF, dib_header.size_image);
-	fillImage(&bmp_file, white);
+	fillImage(&bmp_file, &white);
 
 	struct color line_color = {
 		0x00,
@@ -132,10 +135,13 @@ int main()
 		0xFF
 	}; // this is pure pink
 
-	fillImage(&bmp_file, background_color);
-	drawLine(&bmp_file, line_color, 0, 0, width, height);
-	drawRect(&bmp_file, line_color, 100, 100, 400, 400, false);
-	drawRect(&bmp_file, line_color, 400, 400, 700, 700, true);
+	fillImage(&bmp_file, &background_color); // make the entire background pink
+	drawLine(&bmp_file, &line_color, 100, 0, 100, 1000); // vertica line
+	drawLine(&bmp_file, &line_color, 0, 100, 1000, 100); // horizontal line
+	drawLine(&bmp_file, &line_color, 0, 0, width, height); // diagonal top left to bottom right
+	drawLine(&bmp_file, &line_color, width, 0, 0, height); // diagonal top right to bottom left
+	drawRect(&bmp_file, &line_color, 100, 100, 400, 400, false); // rectangle top left no fill
+	drawRect(&bmp_file, &line_color, 400, 400, 700, 700, true); // rectangle directly bottom right of the previous one with fill
 
 	//printf("ImageData %d\n", imageData);
 
@@ -164,43 +170,81 @@ int main()
 	return 0;
 }
 
-void drawRect(const struct bmp* bmp_file, struct color line_color, size_t x0, size_t y0, size_t x1, size_t y1, bool filled) {
+void drawRect(const struct bmp* bmp_file, struct color* line_color, int32_t x0, int32_t y0, int32_t x1, int32_t y1, bool filled) {
 	//calculate pitch of each line
-	size_t line_length = bmp_pitch(bmp_file);
+	size_t line_length = bmpPitch(bmp_file);
+
+	if (y1 > -bmp_file->dib_header.height) {
+		y1 = -bmp_file->dib_header.height - 1;
+	}
+
+	if (x1 > bmp_file->dib_header.width) {
+		x1 = bmp_file->dib_header.width - 1;
+	}
 
 	// loop through all lines and the entire width in pixels and set each pixel to the color given
-	size_t line, row;
+	int32_t line, row;
 	for (line = y0; line <= y1; line++) { //renegate height since we store a negative value for top-to-bottom pixel rows
 		for (row = x0; row <= x1; row++) {
 			if (line > y0 && line < y1 && row > x0 && row < x1 && filled == false) continue;
-			uint8_t* pixel = &bmp_file->imageData[line * line_length + row * 3 * sizeof(uint8_t)];
-			pixel[0] = color.red; //red
-			pixel[1] = color.green; //green
-			pixel[2] = color.blue; //blue
+			drawPixel(bmp_file, line_color, row, line);
 		}
 	}
 }
 
-void drawLine(const struct bmp* bmp_file, struct color line_color, size_t x0, size_t y0, size_t x1, size_t y1) {
+void drawLineHigh(const struct bmp* bmp_file, struct color* line_color, int32_t x0, int32_t y0, int32_t x1, int32_t y1) {
 	//calculate pitch of each line
-	size_t line_length = bmp_pitch(bmp_file);
+	size_t line_length = bmpPitch(bmp_file);
 
 	// calculate delta of x and y to know the direction of the line
-	size_t deltax= x1 - x0;
-	size_t deltay = y1 - y0;
-	size_t D = 2 * deltay - deltax;
+	int32_t deltax = x1 - x0;
+	int32_t deltay = y1 - y0;
+	int32_t D = 2 * deltax - deltay;
+	int32_t xi = 1;
+
+	if (deltax < 0) {
+		xi = -1;
+		deltax = -deltax;
+	}
 	
-	// loop through the entire lines "width" from x0 to x1
-	size_t y = y0;
-	size_t x;
-	for (x = x0; x <= x1; x++) {
-		uint8_t* pixel = &bmp_file->imageData[y * line_length + x * 3 * sizeof(uint8_t)];
-		pixel[0] = line_color.red; //red
-		pixel[1] = line_color.green; //green
-		pixel[2] = line_color.blue; //blue
+	// loop through the entire images "height" from y0 to y1
+	int32_t x = x0;;
+	int32_t y;
+	for (y = y0; y < y1; y++) {
+		drawPixel(bmp_file, line_color, x, y);
 
 		if (D > 0) {
-			y = y + 1;
+			x = x + xi;
+			D = D - 2 * deltay;
+		}
+
+		D = D + 2 * deltax;
+	}
+}
+
+void drawLineLow(const struct bmp* bmp_file, struct color* line_color, int32_t x0, int32_t y0, int32_t x1, int32_t y1) {
+	//calculate pitch of each line
+	size_t line_length = bmpPitch(bmp_file);
+
+	// calculate delta of x and y to know the direction of the line
+	int32_t deltax = x1 - x0;
+	int32_t deltay = y1 - y0;
+	int32_t D = 2 * deltay - deltax;
+	int32_t yi = 1;
+
+	if (deltay < 0) {
+		yi = -1;
+		deltay = -deltay;
+	}
+
+	// loop through the entire lines "width" from x0 to x1
+	int32_t y = y0;
+	int32_t x;
+	for (x = x0; x < x1; x++) {
+		drawPixel(bmp_file, line_color, x, y);
+
+		if (D > 0) {
+			y = y + yi;
 			D = D - 2 * deltax;
 		}
 
@@ -208,23 +252,49 @@ void drawLine(const struct bmp* bmp_file, struct color line_color, size_t x0, si
 	}
 }
 
-void fillImage(const struct bmp* bmp_file, struct color color) {
+void drawLine(const struct bmp* bmp_file, struct color* line_color, int32_t x0, int32_t y0, int32_t x1, int32_t y1) {
+	if (abs(y1 - y0) < abs(x1 - x0)) {
+		if (x0 > x1) {
+			drawLineLow(bmp_file, line_color, x1, y1, x0, y0);
+		}
+		else {
+			drawLineLow(bmp_file, line_color, x0, y0, x1, y1);
+		}
+	}
+	else {
+		if (y0 > y1) {
+			drawLineHigh(bmp_file, line_color, x1, y1, x0, y0);
+		}
+		else {
+			drawLineHigh(bmp_file, line_color, x0, y0, x1, y1);
+		}
+	}
+}
+
+void drawPixel(const struct bmp* bmp_file, const struct color* pixel_color, int32_t x, int32_t y) {
 	//calculate pitch of each line
-	size_t line_length = bmp_pitch(bmp_file);
+	size_t line_length = bmpPitch(bmp_file);
+
+	uint8_t* pixel = &bmp_file->imageData[y * line_length + x * 3 * sizeof(uint8_t)];
+	pixel[0] = pixel_color->red; //red
+	pixel[1] = pixel_color->green; //green
+	pixel[2] = pixel_color->blue; //blue
+}
+
+void fillImage(const struct bmp* bmp_file, struct color* color) {
+	//calculate pitch of each line
+	size_t line_length = bmpPitch(bmp_file);
 
 	// loop through all lines and the entire width in pixels and set each pixel to the color given
 	size_t line, row;
 	for (line = 0; line < -bmp_file->dib_header.height; line++) { //renegate height since we store a negative value for top-to-bottom pixel rows
 		for (row = 0; row < bmp_file->dib_header.width; row++) {
-			uint8_t* pixel = &bmp_file->imageData[line * line_length + row * 3 * sizeof(uint8_t)];
-			pixel[0] = color.red; //red
-			pixel[1] = color.green; //green
-			pixel[2] = color.blue; //blue
+			drawPixel(bmp_file, color, row, line);
 		}
 	}
 }
 
-size_t align_up(size_t size, size_t alignment) {
+size_t alignUp(size_t size, size_t alignment) {
 	// calculate remainder to align properly
 	size_t remainder = size % alignment;
 	size_t padding = remainder > 0 ? alignment - remainder : 0;
@@ -232,7 +302,7 @@ size_t align_up(size_t size, size_t alignment) {
 	return size + padding;
 }
 
-size_t bmp_pitch(const struct bmp* bmp_file) {
+size_t bmpPitch(const struct bmp* bmp_file) {
 	size_t pitch = bmp_file->dib_header.width * 3 * sizeof(uint8_t);
-	return align_up(pitch, 4);
+	return alignUp(pitch, 4);
 }
