@@ -4,10 +4,10 @@ This is an exercise proposed by Teufelchen#2781 to help me (BigBrainAFK#0001) be
 99% of this code exists only cause JFR told me to do it this way.
 
 So objectives:
-- Understand the file format
-- Write software that creates empty bmps
-- Write functions to draw line/rects/circles
-- Draw funny pictures
+- Understand the file format -- DONE
+- Write software that creates empty bmps -- DONE
+- Write functions to draw line/rects/circles -- DONE
+- Draw funny pictures -- maybe done?
 */
 
 #include <stdio.h>
