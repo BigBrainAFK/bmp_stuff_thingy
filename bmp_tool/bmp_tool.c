@@ -29,6 +29,8 @@ struct bmp_header {
 } bmp_header;
 #pragma pack(pop)
 
+// Happy now JFR?
+#pragma pack(push, 1)
 struct bmp_dib {
 	uint32_t size;
 	int32_t width;
@@ -42,6 +44,7 @@ struct bmp_dib {
 	uint32_t color_used;
 	uint32_t color_important;
 } bmp_dib;
+#pragma pack(pop)
 
 struct bmp {
 	struct bmp_header header;
