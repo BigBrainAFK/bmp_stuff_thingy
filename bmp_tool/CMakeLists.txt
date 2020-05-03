@@ -4,6 +4,6 @@
 cmake_minimum_required (VERSION 3.8)
 
 # Add source to this project's executable.
-add_executable (bmp_tool "bmp_tool.c" "bmp_tool.h")
+add_executable (bmp_tool "bmp_tool.c")
 
 # TODO: Add tests and install targets if needed.

@@ -18,13 +18,16 @@ So objectives:
 
 void drawRect(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1, bool filled);
 void drawCircle(const struct bmp* bmp_file, const struct color* line_color, long int xc, long int yc, long int radius, bool filled);
-void symmetryFilled(const struct bmp* bmp_file, const struct color* line_color, long int x, long int y, long int xc, long int yc);
 void drawLineHigh(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1);
-void symmetry(const struct bmp* bmp_file, const struct color* line_color, long int x, long int y, long int xc, long int yc);
 void drawLineLow(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1);
 void drawLine(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1);
 void drawPixel(const struct bmp* bmp_file, const struct color* pixel_color, long int x, long int y);
+
 void fillImage(const struct bmp* bmp_file, const struct color* color);
+
+void symmetryFilled(const struct bmp* bmp_file, const struct color* line_color, long int x, long int y, long int xc, long int yc);
+void symmetry(const struct bmp* bmp_file, const struct color* line_color, long int x, long int y, long int xc, long int yc);
+
 size_t alignUp(size_t size, size_t alignment);
 size_t bmpPitch(const struct bmp* bmp_file);
 
@@ -148,7 +151,7 @@ int main()
 	drawLine(&bmp_file, &line_color, width, 0, 0, height); // diagonal top right to bottom left
 	drawRect(&bmp_file, &line_color, 100, 100, 400, 400, false); // rectangle top left no fill
 	drawRect(&bmp_file, &line_color, 400, 400, 700, 700, true); // rectangle directly bottom right of the previous one with fill
-	drawCircle(&bmp_file, &line_color, 800, 800, 100, false); // empty circle at 800,800 with radius 100
+	drawCircle(&bmp_file, &line_color, 700, 700, 100, false); // empty circle at 800,800 with radius 100
 	drawCircle(&bmp_file, &line_color, 500, 800, 100, true); // filled circle at 500,800 with radius 100
 
 	//printf("ImageData %d\n", imageData);
@@ -229,17 +232,6 @@ void drawCircle(const struct bmp* bmp_file, const struct color* line_color, long
 	}
 }
 
-void symmetryFilled(const struct bmp* bmp_file, const struct color* line_color, long int x, long int y, long int xc, long int yc) {
-	// instead of coloring in the individual pixels of each pair draw a line between them
-	drawLine(bmp_file, line_color, xc - x, yc - y, xc + x, yc - y);
-
-	drawLine(bmp_file, line_color, xc - y, yc - x, xc + y, yc - x);
-
-	drawLine(bmp_file, line_color, xc - y, yc + x, xc + y, yc + x);
-
-	drawLine(bmp_file, line_color, xc - x, yc + y, xc + x, yc + y);
-}
-
 void drawLineHigh(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1) {
 	//calculate pitch of each line
 	size_t line_length = bmpPitch(bmp_file);
@@ -268,21 +260,6 @@ void drawLineHigh(const struct bmp* bmp_file, struct color* line_color, long int
 
 		D = D + 2 * deltax;
 	}
-}
-
-void symmetry(const struct bmp* bmp_file, const struct color* line_color, long int x, long int y, long int xc, long int yc) {
-	// color in all symetrical pixel pairs
-	drawPixel(bmp_file, line_color, xc + x, yc - y);
-	drawPixel(bmp_file, line_color, xc - x, yc - y);
-
-	drawPixel(bmp_file, line_color, xc + y, yc - x);
-	drawPixel(bmp_file, line_color, xc - y, yc - x);
-
-	drawPixel(bmp_file, line_color, xc + y, yc + x);
-	drawPixel(bmp_file, line_color, xc - y, yc + x);
-
-	drawPixel(bmp_file, line_color, xc + x, yc + y);
-	drawPixel(bmp_file, line_color, xc - x, yc + y);
 }
 
 void drawLineLow(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1) {
@@ -314,6 +291,39 @@ void drawLineLow(const struct bmp* bmp_file, struct color* line_color, long int 
 		D = D + 2 * deltay;
 	}
 }
+
+//void DrawFilledCircle(const struct bmp* bmp_file, const struct color* color, long int x_center, long int y_center, long int radius)
+//{
+//	int x = radius;
+//	int y = 0;
+//	int x_change = 1 - (radius << 1);
+//	int y_change = 0;
+//	int radiusError = 0;
+//
+//	while (x >= y)
+//	{
+//		for (int i = x_center - x; i <= x_center + x; i++)
+//		{
+//			SetPixel(i, y_center + y);
+//			SetPixel(i, y_center - y);
+//		}
+//		for (int i = x_center - y; i <= x_center + y; i++)
+//		{
+//			SetPixel(i, y_center + x);
+//			SetPixel(i, y_center - x);
+//		}
+//
+//		y++;
+//		radiusError += y_change;
+//		y_change += 2;
+//		if (((radiusError << 1) + y_change) > 0)
+//		{
+//			x--;
+//			radiusError += x_change;
+//			x_change += 2;
+//		}
+//	}
+//}
 
 void drawLine(const struct bmp* bmp_file, struct color* line_color, long int x0, long int y0, long int x1, long int y1) {
 	if (abs(y1 - y0) < abs(x1 - x0)) {
@@ -355,6 +365,32 @@ void fillImage(const struct bmp* bmp_file, const struct color* color) {
 			drawPixel(bmp_file, color, row, line);
 		}
 	}
+}
+
+void symmetryFilled(const struct bmp* bmp_file, const struct color* line_color, long int x, long int y, long int xc, long int yc) {
+	// instead of coloring in the individual pixels of each pair draw a line between them
+	drawLine(bmp_file, line_color, xc - x, yc - y, xc + x, yc - y);
+
+	drawLine(bmp_file, line_color, xc - y, yc - x, xc + y, yc - x);
+
+	drawLine(bmp_file, line_color, xc - y, yc + x, xc + y, yc + x);
+
+	drawLine(bmp_file, line_color, xc - x, yc + y, xc + x, yc + y);
+}
+
+void symmetry(const struct bmp* bmp_file, const struct color* line_color, long int x, long int y, long int xc, long int yc) {
+	// color in all symetrical pixel pairs
+	drawPixel(bmp_file, line_color, xc + x, yc - y);
+	drawPixel(bmp_file, line_color, xc - x, yc - y);
+
+	drawPixel(bmp_file, line_color, xc + y, yc - x);
+	drawPixel(bmp_file, line_color, xc - y, yc - x);
+
+	drawPixel(bmp_file, line_color, xc + y, yc + x);
+	drawPixel(bmp_file, line_color, xc - y, yc + x);
+
+	drawPixel(bmp_file, line_color, xc + x, yc + y);
+	drawPixel(bmp_file, line_color, xc - x, yc + y);
 }
 
 size_t alignUp(size_t size, size_t alignment) {
