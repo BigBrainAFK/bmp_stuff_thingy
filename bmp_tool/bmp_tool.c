@@ -53,7 +53,6 @@ struct color {
 	uint8_t red;
 	uint8_t green;
 	uint8_t blue;
-	uint8_t alpha;
 };
 
 void drawRect(const struct bmp* bmp_file, const struct color* line_color, long int x0, long int y0, long int x1, long int y1, bool filled);
@@ -124,7 +123,6 @@ int main()
 	struct color white = {
 		0xFF,
 		0xFF,
-		0xFF,
 		0xFF
 	}; // black for the line
 
@@ -135,32 +133,28 @@ int main()
 	struct color background_color = {
 		0xCD,
 		0xCD,
-		0xCD,
-		0xFF
+		0xCD
 	}; // this is grey
 
 	struct color line_color = {
 		0x00,
 		0x00,
-		0x00,
-		0xFF
+		0x00
 	}; // black for the line
 
 	struct color rectangle_blue = {
 		0x00,
 		0x00,
-		0xFF,
-		0x80
+		0xFF
 	}; //pure blue
 
 	struct color circle_red = {
 		0xFF,
 		0x00,
-		0x00,
-		0x80
+		0x00
 	}; // pure red
 
-	fillImage(&bmp_file, &background_color); // make the entire background pink
+	fillImage(&bmp_file, &background_color); // make the entire background grey
 	drawLine(&bmp_file, &line_color, 0, 200, 300, 450); // weird line to satisfy JFR
 	drawLine(&bmp_file, &line_color, 300, 200, 0, 450); // weird line other direction to satisfy JFR
 	drawLine(&bmp_file, &line_color, 30, 20, 300, 100); // JFRs Line
@@ -330,21 +324,10 @@ void drawPixel(const struct bmp* bmp_file, const struct color* pixel_color, long
 	//calculate pitch of each line
 	size_t line_length = bmpPitch(bmp_file);
 
-	long int alpha_percent = (pixel_color->alpha * 100 + 128) / 256;
-	float alpha = alpha_percent / 100.f;
-
 	uint8_t* pixel = &bmp_file->imageData[y * line_length + x * 3 * sizeof(uint8_t)];
-	
-	if (alpha == 100) {
-		pixel[0] = pixel_color->blue / 2; //blue
-		pixel[1] = pixel_color->green / 2; //green
-		pixel[2] = pixel_color->red / 2; //red
-	}
-	else if (alpha > 0) {
-		pixel[0] = pixel[0] * (1.f - alpha) + pixel_color->blue * alpha; //blue
-		pixel[1] = pixel[0] * (1.f - alpha) + pixel_color->green * alpha; //green
-		pixel[2] = pixel[0] * (1.f - alpha) + pixel_color->red * alpha; //red
-	}
+	pixel[0] = pixel_color->blue;
+	pixel[1] = pixel_color->green;
+	pixel[2] = pixel_color->red;
 }
 
 void fillImage(const struct bmp* bmp_file, const struct color* color) {
