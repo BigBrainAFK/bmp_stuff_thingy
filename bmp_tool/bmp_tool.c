@@ -15,6 +15,7 @@ So objectives:
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <math.h>
 
 #pragma pack(push, 1)
 struct bmp_header {
@@ -52,6 +53,7 @@ struct color {
 	uint8_t red;
 	uint8_t green;
 	uint8_t blue;
+	uint8_t alpha;
 };
 
 void drawRect(const struct bmp* bmp_file, const struct color* line_color, long int x0, long int y0, long int x1, long int y1, bool filled);
@@ -122,24 +124,41 @@ int main()
 	struct color white = {
 		0xFF,
 		0xFF,
-		0xFF
+		0xFF,
+		0x00
 	}; // black for the line
 
 	//memset so the microsoft compiler doesnt put 0xCD everywhere but its actually 0x00
 	//memset(bmp_file.imageData, 0xFF, dib_header.size_image);
 	fillImage(&bmp_file, &white);
 
-	struct color line_color = {
-		0x00,
-		0x00,
-		0x00
-	}; // black for the line
-
 	struct color background_color = {
 		0xCD,
 		0xCD,
-		0xCD
+		0xCD,
+		0xFF
 	}; // this is grey
+
+	struct color line_color = {
+		0x00,
+		0x00,
+		0x00,
+		0xFF
+	}; // black for the line
+
+	struct color rectangle_blue = {
+		0x00,
+		0x00,
+		0xFF,
+		0x80
+	}; //pure blue
+
+	struct color circle_red = {
+		0xFF,
+		0x00,
+		0x00,
+		0x80
+	}; // pure red
 
 	fillImage(&bmp_file, &background_color); // make the entire background pink
 	drawLine(&bmp_file, &line_color, 0, 200, 300, 450); // weird line to satisfy JFR
@@ -149,10 +168,10 @@ int main()
 	drawLine(&bmp_file, &line_color, 0, 100, 1000, 100); // horizontal line
 	drawLine(&bmp_file, &line_color, 0, 0, width, height); // diagonal top left to bottom right
 	drawLine(&bmp_file, &line_color, width, 0, 0, height); // diagonal top right to bottom left
-	drawRect(&bmp_file, &line_color, 100, 100, 400, 400, false); // rectangle top left no fill
-	drawRect(&bmp_file, &line_color, 400, 400, 700, 700, true); // rectangle directly bottom right of the previous one with fill
-	drawCircle(&bmp_file, &line_color, 700, 700, 100, false); // empty circle at 800,800 with radius 100
-	drawCircle(&bmp_file, &line_color, 500, 800, 100, true); // filled circle at 500,800 with radius 100
+	drawRect(&bmp_file, &rectangle_blue, 100, 100, 400, 400, false); // rectangle top left no fill
+	drawRect(&bmp_file, &rectangle_blue, 400, 400, 700, 700, true); // rectangle directly bottom right of the previous one with fill
+	drawCircle(&bmp_file, &circle_red, 700, 700, 100, false); // empty circle at 800,800 with radius 100
+	drawCircle(&bmp_file, &circle_red, 400, 700, 100, true); // filled circle at 500,800 with radius 100
 
 	//printf("ImageData %d\n", imageData);
 
@@ -208,19 +227,15 @@ void drawCircle(const struct bmp* bmp_file, const struct color* line_color, long
 	int y = radius;
 	int p = 1 - radius;
 
-	if (filled == true) {
-		symmetryFilled(bmp_file, line_color, x, y, x_center, y_center);
-	}
-	else {
-		symmetry(bmp_file, line_color, x, y, x_center, y_center);
-	}
-
 	for (x = 0; y > x; x++) {
 		if (p < 0)
 			p += 2 * x + 3;
 		else {
 			p += 2 * (x - y) + 5;
 			y--;
+			if (filled == true && y != x) {
+				symmetryFilled(bmp_file, line_color, y, x, x_center, y_center);
+			}
 		}
 
 		if (filled == true) {
@@ -292,39 +307,6 @@ void drawLineLow(const struct bmp* bmp_file, const struct color* line_color, lon
 	}
 }
 
-//void DrawFilledCircle(const struct bmp* bmp_file, const struct color* color, long int x_center, long int y_center, long int radius)
-//{
-//	int x = radius;
-//	int y = 0;
-//	int x_change = 1 - (radius << 1);
-//	int y_change = 0;
-//	int radiusError = 0;
-//
-//	while (x >= y)
-//	{
-//		for (int i = x_center - x; i <= x_center + x; i++)
-//		{
-//			SetPixel(i, y_center + y);
-//			SetPixel(i, y_center - y);
-//		}
-//		for (int i = x_center - y; i <= x_center + y; i++)
-//		{
-//			SetPixel(i, y_center + x);
-//			SetPixel(i, y_center - x);
-//		}
-//
-//		y++;
-//		radiusError += y_change;
-//		y_change += 2;
-//		if (((radiusError << 1) + y_change) > 0)
-//		{
-//			x--;
-//			radiusError += x_change;
-//			x_change += 2;
-//		}
-//	}
-//}
-
 void drawLine(const struct bmp* bmp_file, const struct color* line_color, long int x0, long int y0, long int x1, long int y1) {
 	if (abs(y1 - y0) < abs(x1 - x0)) {
 		if (x0 > x1) {
@@ -348,10 +330,21 @@ void drawPixel(const struct bmp* bmp_file, const struct color* pixel_color, long
 	//calculate pitch of each line
 	size_t line_length = bmpPitch(bmp_file);
 
+	long int alpha_percent = (pixel_color->alpha * 100 + 128) / 256;
+	float alpha = alpha_percent / 100.f;
+
 	uint8_t* pixel = &bmp_file->imageData[y * line_length + x * 3 * sizeof(uint8_t)];
-	pixel[0] = pixel_color->red; //red
-	pixel[1] = pixel_color->green; //green
-	pixel[2] = pixel_color->blue; //blue
+	
+	if (alpha == 100) {
+		pixel[0] = pixel_color->blue / 2; //blue
+		pixel[1] = pixel_color->green / 2; //green
+		pixel[2] = pixel_color->red / 2; //red
+	}
+	else if (alpha > 0) {
+		pixel[0] = pixel[0] * (1.f - alpha) + pixel_color->blue * alpha; //blue
+		pixel[1] = pixel[0] * (1.f - alpha) + pixel_color->green * alpha; //green
+		pixel[2] = pixel[0] * (1.f - alpha) + pixel_color->red * alpha; //red
+	}
 }
 
 void fillImage(const struct bmp* bmp_file, const struct color* color) {
@@ -369,13 +362,11 @@ void fillImage(const struct bmp* bmp_file, const struct color* color) {
 
 void symmetryFilled(const struct bmp* bmp_file, const struct color* line_color, long int x, long int y, long int xc, long int yc) {
 	// instead of coloring in the individual pixels of each pair draw a line between them
-	drawLine(bmp_file, line_color, xc - x, yc - y, xc + x, yc - y);
+	drawLine(bmp_file, line_color, xc + x, yc - y, xc + x, yc + y);
 
-	drawLine(bmp_file, line_color, xc - y, yc - x, xc + y, yc - x);
-
-	drawLine(bmp_file, line_color, xc - y, yc + x, xc + y, yc + x);
-
-	drawLine(bmp_file, line_color, xc - x, yc + y, xc + x, yc + y);
+	if (x != 0) {
+		drawLine(bmp_file, line_color, xc - x, yc - y, xc - x, yc + y);
+	}
 }
 
 void symmetry(const struct bmp* bmp_file, const struct color* line_color, long int x, long int y, long int xc, long int yc) {
