@@ -125,7 +125,7 @@ int main()
 		0xFF,
 		0xFF,
 		0xFF,
-		0x00
+		0xFF
 	}; // black for the line
 
 	//memset so the microsoft compiler doesnt put 0xCD everywhere but its actually 0x00
